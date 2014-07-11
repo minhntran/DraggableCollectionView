@@ -20,3 +20,10 @@
 - (void)collectionView:(UICollectionView *)collectionView didMoveItemAtIndexPath:(NSIndexPath *)indexPath toIndexPath:(NSIndexPath *)toIndexPath;
 
 @end
+
+@protocol UICollectionCell_Draggable
+
+@optional
+- (UIImage *)dragImage;
+
+@end

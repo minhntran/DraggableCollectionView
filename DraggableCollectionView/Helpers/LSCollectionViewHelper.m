@@ -107,11 +107,27 @@ typedef NS_ENUM(NSInteger, _ScrollingDirection) {
     _panPressGestureRecognizer.enabled = canWarp && enabled;
 }
 
+- (BOOL)movingCell
+{
+    return mockCell != nil;
+}
+
 - (UIImage *)imageFromCell:(UICollectionViewCell *)cell {
-    UIGraphicsBeginImageContextWithOptions(cell.bounds.size, cell.isOpaque, 0.0f);
-    [cell.layer renderInContext:UIGraphicsGetCurrentContext()];
-    UIImage *image = UIGraphicsGetImageFromCurrentImageContext();
-    UIGraphicsEndImageContext();
+
+    UIImage *image = nil;
+    
+    if ([cell respondsToSelector:@selector(dragImage)]) {
+        id<UICollectionCell_Draggable> draggableCell = (id<UICollectionCell_Draggable>)cell;
+        image = [draggableCell dragImage];
+    }
+    
+    if (!image) {
+        UIGraphicsBeginImageContextWithOptions(cell.bounds.size, cell.isOpaque, 0.0f);
+        [cell.layer renderInContext:UIGraphicsGetCurrentContext()];
+        image = UIGraphicsGetImageFromCurrentImageContext();
+        UIGraphicsEndImageContext();
+    }
+    
     return image;
 }
 
@@ -166,12 +182,19 @@ typedef NS_ENUM(NSInteger, _ScrollingDirection) {
     
     // What cell are we closest to?
     for (UICollectionViewLayoutAttributes *layoutAttr in layoutAttrsInRect) {
-        CGFloat xd = layoutAttr.center.x - point.x;
-        CGFloat yd = layoutAttr.center.y - point.y;
-        NSInteger dist = sqrtf(xd*xd + yd*yd);
-        if (dist < closestDist) {
-            closestDist = dist;
-            indexPath = layoutAttr.indexPath;
+        if (layoutAttr.representedElementCategory == UICollectionElementCategoryCell)  {
+            if (CGRectContainsPoint(layoutAttr.frame, point)) {
+                closestDist = 0;
+                indexPath = layoutAttr.indexPath;
+            } else {
+                CGFloat xd = layoutAttr.center.x - point.x;
+                CGFloat yd = layoutAttr.center.y - point.y;
+                NSInteger dist = sqrtf(xd*xd + yd*yd);
+                if (dist < closestDist) {
+                    closestDist = dist;
+                    indexPath = layoutAttr.indexPath;
+                }
+            }
         }
     }
     
@@ -182,7 +205,7 @@ typedef NS_ENUM(NSInteger, _ScrollingDirection) {
             continue;
         }
         NSInteger items = [self.collectionView numberOfItemsInSection:i];
-        NSIndexPath *nextIndexPath = [NSIndexPath indexPathForItem:items inSection:i];
+        NSIndexPath *nextIndexPath = [NSIndexPath indexPathForItem:items - 1 inSection:i];
         UICollectionViewLayoutAttributes *layoutAttr;
         CGFloat xd, yd;
         
@@ -236,6 +259,16 @@ typedef NS_ENUM(NSInteger, _ScrollingDirection) {
             [mockCell removeFromSuperview];
             mockCell = [[UIImageView alloc] initWithFrame:cell.frame];
             mockCell.image = [self imageFromCell:cell];
+            [mockCell sizeToFit];
+            
+			// Add shadow
+            [mockCell.layer setMasksToBounds:NO ];
+			[mockCell.layer setShadowColor:[[UIColor blackColor ] CGColor ] ];
+			[mockCell.layer setShadowOpacity:0.65 ];
+			[mockCell.layer setShadowRadius:10.0 ];
+			[mockCell.layer setShadowOffset:CGSizeMake( 0 , 0 ) ];
+            [mockCell.layer setShadowPath:[[UIBezierPath bezierPathWithRect:mockCell.bounds ] CGPath ] ];
+            
             mockCenter = mockCell.center;
             [self.collectionView addSubview:mockCell];
             [UIView

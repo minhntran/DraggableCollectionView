@@ -16,4 +16,5 @@
 @property (nonatomic, assign) UIEdgeInsets scrollingEdgeInsets;
 @property (nonatomic, assign) CGFloat scrollingSpeed;
 @property (nonatomic, assign) BOOL enabled;
+@property (nonatomic, readonly) BOOL movingCell;
 @end

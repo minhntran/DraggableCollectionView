@@ -50,4 +50,9 @@
     [self getHelper].scrollingSpeed = scrollingSpeed;
 }
 
+- (BOOL)movingCell
+{
+    return [self getHelper].movingCell;
+}
+
 @end
