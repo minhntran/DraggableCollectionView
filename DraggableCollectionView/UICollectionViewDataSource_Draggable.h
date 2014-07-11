@@ -18,12 +18,8 @@
 
 - (BOOL)collectionView:(UICollectionView *)collectionView canMoveItemAtIndexPath:(NSIndexPath *)indexPath toIndexPath:(NSIndexPath *)toIndexPath;
 - (void)collectionView:(UICollectionView *)collectionView didMoveItemAtIndexPath:(NSIndexPath *)indexPath toIndexPath:(NSIndexPath *)toIndexPath;
-
-@end
-
-@protocol UICollectionCell_Draggable
-
-@optional
-- (UIImage *)dragImage;
+- (void)collectionView:(UICollectionView *)collectionView alterTranslation:(CGPoint *)translation;
+- (CGAffineTransform)collectionView:(UICollectionView *)collectionView transformForDraggingItemAtIndexPath:(NSIndexPath *)indexPath duration:(NSTimeInterval *)duration;
+- (UIImage *)collectionView:(UICollectionView *)collectionView cellImageForDraggingItemAtIndexPath:(NSIndexPath *)indexPath;
 
 @end

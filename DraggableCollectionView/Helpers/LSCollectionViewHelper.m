@@ -37,6 +37,7 @@ typedef NS_ENUM(NSInteger, _ScrollingDirection) {
     _ScrollingDirection scrollingDirection;
     BOOL canWarp;
     BOOL canScroll;
+	BOOL _hasShouldAlterTranslationDelegateMethod;
 }
 @property (readonly, nonatomic) LSCollectionViewLayoutHelper *layoutHelper;
 @end
@@ -114,20 +115,10 @@ typedef NS_ENUM(NSInteger, _ScrollingDirection) {
 
 - (UIImage *)imageFromCell:(UICollectionViewCell *)cell {
 
-    UIImage *image = nil;
-    
-    if ([cell respondsToSelector:@selector(dragImage)]) {
-        id<UICollectionCell_Draggable> draggableCell = (id<UICollectionCell_Draggable>)cell;
-        image = [draggableCell dragImage];
-    }
-    
-    if (!image) {
-        UIGraphicsBeginImageContextWithOptions(cell.bounds.size, cell.isOpaque, 0.0f);
-        [cell.layer renderInContext:UIGraphicsGetCurrentContext()];
-        image = UIGraphicsGetImageFromCurrentImageContext();
-        UIGraphicsEndImageContext();
-    }
-    
+	UIGraphicsBeginImageContextWithOptions(cell.bounds.size, NO, 0);
+	[cell.layer renderInContext:UIGraphicsGetCurrentContext()];
+	UIImage * image = UIGraphicsGetImageFromCurrentImageContext();
+	UIGraphicsEndImageContext();
     return image;
 }
 
@@ -241,6 +232,8 @@ typedef NS_ENUM(NSInteger, _ScrollingDirection) {
         return;
     }
     
+	_hasShouldAlterTranslationDelegateMethod = [self.collectionView.dataSource respondsToSelector:@selector(collectionView:alterTranslation:)];
+	
     NSIndexPath *indexPath = [self indexPathForItemClosestToPoint:[sender locationInView:self.collectionView]];
     
     switch (sender.state) {
@@ -254,12 +247,19 @@ typedef NS_ENUM(NSInteger, _ScrollingDirection) {
                 return;
             }
             // Create mock cell to drag around
-            UICollectionViewCell *cell = [self.collectionView cellForItemAtIndexPath:indexPath];
+			UICollectionViewCell *cell = [self.collectionView cellForItemAtIndexPath:indexPath];
             cell.highlighted = NO;
             [mockCell removeFromSuperview];
             mockCell = [[UIImageView alloc] initWithFrame:cell.frame];
-            mockCell.image = [self imageFromCell:cell];
-            [mockCell sizeToFit];
+			
+			if ([self.collectionView.dataSource respondsToSelector:@selector(collectionView:cellImageForDraggingItemAtIndexPath:)]) {
+				mockCell.image = [(id<UICollectionViewDataSource_Draggable>)self.collectionView.dataSource
+								  collectionView:self.collectionView cellImageForDraggingItemAtIndexPath:indexPath];
+			}
+			if (mockCell.image == nil) {
+				mockCell.image = [self imageFromCell:cell];
+			}
+			[mockCell sizeToFit];
             
 			// Add shadow
             [mockCell.layer setMasksToBounds:NO ];
@@ -271,12 +271,13 @@ typedef NS_ENUM(NSInteger, _ScrollingDirection) {
             
             mockCenter = mockCell.center;
             [self.collectionView addSubview:mockCell];
-            [UIView
-             animateWithDuration:0.3
-             animations:^{
-                 mockCell.transform = CGAffineTransformMakeScale(1.1f, 1.1f);
-             }
-             completion:nil];
+			if ([self.collectionView.dataSource respondsToSelector:@selector(collectionView:transformForDraggingItemAtIndexPath:duration:)]) {
+				NSTimeInterval duration = 0.3;
+				CGAffineTransform transform = [(id<UICollectionViewDataSource_Draggable>)self.collectionView.dataSource collectionView:self.collectionView transformForDraggingItemAtIndexPath:indexPath duration:&duration];
+				[UIView animateWithDuration:duration animations:^{
+					mockCell.transform = transform;
+				} completion:nil];
+			}
             
             // Start warping
             lastIndexPath = indexPath;
@@ -358,6 +359,9 @@ typedef NS_ENUM(NSInteger, _ScrollingDirection) {
     if(sender.state == UIGestureRecognizerStateChanged) {
         // Move mock to match finger
         fingerTranslation = [sender translationInView:self.collectionView];
+		if (_hasShouldAlterTranslationDelegateMethod) {
+			[(id<UICollectionViewDataSource_Draggable>)self.collectionView.dataSource collectionView:self.collectionView alterTranslation:&fingerTranslation];
+		}
         mockCell.center = _CGPointAdd(mockCenter, fingerTranslation);
         
         // Scroll when necessary

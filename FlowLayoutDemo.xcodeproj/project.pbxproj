@@ -58,6 +58,7 @@
 		8E947CE017545C370077D957 /* LSCollectionViewLayoutHelper.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = LSCollectionViewLayoutHelper.h; sourceTree = "<group>"; };
 		8E947CE117545C370077D957 /* LSCollectionViewLayoutHelper.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = LSCollectionViewLayoutHelper.m; sourceTree = "<group>"; };
 		8E955E871793ADF5008F72D9 /* QuartzCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QuartzCore.framework; path = System/Library/Frameworks/QuartzCore.framework; sourceTree = SDKROOT; };
+		FA95571A1970613000EBCF1F /* DraggableCollectionView.podspec */ = {isa = PBXFileReference; lastKnownFileType = text; path = DraggableCollectionView.podspec; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -78,6 +79,7 @@
 		8E947C96175458980077D957 = {
 			isa = PBXGroup;
 			children = (
+				FA95571A1970613000EBCF1F /* DraggableCollectionView.podspec */,
 				8E947CA8175458980077D957 /* FlowLayoutDemo */,
 				8E947CA1175458980077D957 /* Frameworks */,
 				8E947CA0175458980077D957 /* Products */,
