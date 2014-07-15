@@ -12,4 +12,10 @@
 @required
 
 @property (readonly, nonatomic) LSCollectionViewLayoutHelper *layoutHelper;
+
+@optional
+
+- (UICollectionViewScrollDirection)scrollDirection;
+- (UICollectionViewScrollDirection)dragDirection;
+
 @end

@@ -50,9 +50,19 @@
     [self getHelper].scrollingSpeed = scrollingSpeed;
 }
 
-- (BOOL)movingCell
+- (NSIndexPath *)indexPathForMovingItem
 {
-    return [self getHelper].movingCell;
+    return [self getHelper].indexPathForMovingItem;
+}
+
+- (UIImageView *)deleteView
+{
+	return [self getHelper].deleteView;
+}
+
+- (void)setDeleteView:(UIImageView *)deleteView
+{
+	[[self getHelper] setDeleteView:deleteView];
 }
 
 @end

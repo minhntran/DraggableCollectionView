@@ -9,8 +9,10 @@
 #import "UICollectionViewDataSource_Draggable.h"
 #import "LSCollectionViewLayoutHelper.h"
 #import <QuartzCore/QuartzCore.h>
+#import "UICollectionView+Draggable.h"
 
 static int kObservingCollectionViewLayoutContext;
+static int kObservingCollectionViewOffset;
 
 #ifndef CGGEOMETRY__SUPPORT_H_
 CG_INLINE CGPoint
@@ -38,6 +40,7 @@ typedef NS_ENUM(NSInteger, _ScrollingDirection) {
     BOOL canWarp;
     BOOL canScroll;
 	BOOL _hasShouldAlterTranslationDelegateMethod;
+    CGPoint _deleteViewCenter;
 }
 @property (readonly, nonatomic) LSCollectionViewLayoutHelper *layoutHelper;
 @end
@@ -53,6 +56,11 @@ typedef NS_ENUM(NSInteger, _ScrollingDirection) {
                           forKeyPath:@"collectionViewLayout"
                              options:0
                              context:&kObservingCollectionViewLayoutContext];
+		[_collectionView addObserver:self
+                          forKeyPath:@"contentOffset"
+                             options:0
+                             context:&kObservingCollectionViewOffset];
+
         _scrollingEdgeInsets = UIEdgeInsetsMake(50.0f, 50.0f, 50.0f, 50.0f);
         _scrollingSpeed = 300.f;
         
@@ -93,7 +101,13 @@ typedef NS_ENUM(NSInteger, _ScrollingDirection) {
 
 - (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary *)change context:(void *)context
 {
-    if (context == &kObservingCollectionViewLayoutContext) {
+	if (context == &kObservingCollectionViewOffset) {
+		if ([self.deleteView superview]) {
+            CGRect bounds = self.collectionView.bounds;
+			self.deleteView.center = CGPointMake(CGRectGetMinX(bounds) + _deleteViewCenter.x, CGRectGetMinY(bounds) + _deleteViewCenter.y);
+		}
+	}
+    else if (context == &kObservingCollectionViewLayoutContext) {
         [self layoutChanged];
     }
     else {
@@ -108,9 +122,10 @@ typedef NS_ENUM(NSInteger, _ScrollingDirection) {
     _panPressGestureRecognizer.enabled = canWarp && enabled;
 }
 
-- (BOOL)movingCell
+- (NSIndexPath *)indexPathForMovingItem
 {
-    return mockCell != nil;
+	if (!mockCell) return nil;
+    return self.layoutHelper.fromIndexPath;
 }
 
 - (UIImage *)imageFromCell:(UICollectionViewCell *)cell {
@@ -252,9 +267,9 @@ typedef NS_ENUM(NSInteger, _ScrollingDirection) {
             [mockCell removeFromSuperview];
             mockCell = [[UIImageView alloc] initWithFrame:cell.frame];
 			
-			if ([self.collectionView.dataSource respondsToSelector:@selector(collectionView:cellImageForDraggingItemAtIndexPath:)]) {
+			if ([self.collectionView.dataSource respondsToSelector:@selector(collectionView:imageForDraggingItemAtIndexPath:)]) {
 				mockCell.image = [(id<UICollectionViewDataSource_Draggable>)self.collectionView.dataSource
-								  collectionView:self.collectionView cellImageForDraggingItemAtIndexPath:indexPath];
+								  collectionView:self.collectionView imageForDraggingItemAtIndexPath:indexPath];
 			}
 			if (mockCell.image == nil) {
 				mockCell.image = [self imageFromCell:cell];
@@ -271,6 +286,23 @@ typedef NS_ENUM(NSInteger, _ScrollingDirection) {
             
             mockCenter = mockCell.center;
             [self.collectionView addSubview:mockCell];
+			if (self.deleteView) {
+                if ([self.collectionView.dataSource respondsToSelector:@selector(collectionView:deleteViewCenterForItemAtIndexPath:)]) {
+                    _deleteViewCenter = [(id<UICollectionViewDataSource_Draggable>)self.collectionView.dataSource
+                                      collectionView:self.collectionView deleteViewCenterForItemAtIndexPath:indexPath];
+                }
+                else if (_deleteViewCenter.x == 0 && _deleteViewCenter.y == 0) {
+                    _deleteViewCenter = self.deleteView.center;
+                }
+                CGRect bounds = self.collectionView.bounds;
+                self.deleteView.center = CGPointMake(CGRectGetMinX(bounds) + _deleteViewCenter.x, CGRectGetMinY(bounds) + _deleteViewCenter.y);
+                if ([self.deleteView respondsToSelector:@selector(setHighlighted:)])
+                {
+                    [self.deleteView setHighlighted:NO];
+                }
+                [self.collectionView addSubview:self.deleteView];
+            }
+			
 			if ([self.collectionView.dataSource respondsToSelector:@selector(collectionView:transformForDraggingItemAtIndexPath:duration:)]) {
 				NSTimeInterval duration = 0.3;
 				CGAffineTransform transform = [(id<UICollectionViewDataSource_Draggable>)self.collectionView.dataSource collectionView:self.collectionView transformForDraggingItemAtIndexPath:indexPath duration:&duration];
@@ -294,39 +326,68 @@ typedef NS_ENUM(NSInteger, _ScrollingDirection) {
             // Need these for later, but need to nil out layoutHelper's references sooner
             NSIndexPath *fromIndexPath = self.layoutHelper.fromIndexPath;
             NSIndexPath *toIndexPath = self.layoutHelper.toIndexPath;
-            // Tell the data source to move the item
             id<UICollectionViewDataSource_Draggable> dataSource = (id<UICollectionViewDataSource_Draggable>)self.collectionView.dataSource;
-            [dataSource collectionView:self.collectionView moveItemAtIndexPath:fromIndexPath toIndexPath:toIndexPath];
-           
-            // Move the item
-            [self.collectionView performBatchUpdates:^{
-                [self.collectionView moveItemAtIndexPath:fromIndexPath toIndexPath:toIndexPath];
-                self.layoutHelper.fromIndexPath = nil;
-                self.layoutHelper.toIndexPath = nil;
-            } completion:^(BOOL finished) {
-                if (finished) {
+
+            if ([self.deleteView isHighlighted]) {
+                // Delete the item
+                [self.collectionView performBatchUpdates:^{
+                    [dataSource collectionView:self.collectionView deleteItemAtIndexPath:fromIndexPath];
+                    [self.collectionView deleteItemsAtIndexPaths:@[fromIndexPath]];
+                    self.layoutHelper.fromIndexPath = nil;
+                    self.layoutHelper.toIndexPath = nil;
+                } completion:^(BOOL finished) {
+                    if ([dataSource respondsToSelector:@selector(collectionView:didDeleteItemAtIndexPath:)]) {
+                        [dataSource collectionView:self.collectionView didDeleteItemAtIndexPath:fromIndexPath];
+                    }
+                }];
+
+                [UIView
+                 animateWithDuration:0.3
+                 animations:^{
+                     mockCell.center = self.deleteView.center;
+                     mockCell.transform = CGAffineTransformScale(CGAffineTransformMakeRotation(10), 0.01, 0.01);
+                     self.deleteView.alpha = 0.0;
+                 }
+                 completion:^(BOOL finished) {
+                     [mockCell removeFromSuperview];
+                     mockCell = nil;
+                     [self.deleteView removeFromSuperview];
+                     self.deleteView.alpha = 1.0;
+                     self.layoutHelper.hideIndexPath = nil;
+                     [self.collectionView.collectionViewLayout invalidateLayout];
+                 }];
+            }
+            else
+            {
+                // Move the item
+                [self.collectionView performBatchUpdates:^{
+                    [dataSource collectionView:self.collectionView moveItemAtIndexPath:fromIndexPath toIndexPath:toIndexPath];
+                    [self.collectionView moveItemAtIndexPath:fromIndexPath toIndexPath:toIndexPath];
+                    self.layoutHelper.fromIndexPath = nil;
+                    self.layoutHelper.toIndexPath = nil;
+                } completion:^(BOOL finished) {
                     if ([dataSource respondsToSelector:@selector(collectionView:didMoveItemAtIndexPath:toIndexPath:)]) {
                         [dataSource collectionView:self.collectionView didMoveItemAtIndexPath:fromIndexPath toIndexPath:toIndexPath];
                     }
-                }
-            }];
-            
-            // Switch mock for cell
-            UICollectionViewLayoutAttributes *layoutAttributes = [self.collectionView layoutAttributesForItemAtIndexPath:self.layoutHelper.hideIndexPath];
-            [UIView
-             animateWithDuration:0.3
-             animations:^{
-				 CGRect frame = layoutAttributes.frame;
-				 frame.size = mockCell.frame.size;
-				 mockCell.frame = frame;
-				 mockCell.transform = CGAffineTransformIdentity;
-             }
-             completion:^(BOOL finished) {
-                 [mockCell removeFromSuperview];
-                 mockCell = nil;
-                 self.layoutHelper.hideIndexPath = nil;
-                 [self.collectionView.collectionViewLayout invalidateLayout];
-             }];
+                }];
+
+                UICollectionViewLayoutAttributes *layoutAttributes = [self.collectionView layoutAttributesForItemAtIndexPath:self.layoutHelper.hideIndexPath];
+                [UIView
+                 animateWithDuration:0.3
+                 animations:^{
+                     CGRect frame = layoutAttributes.frame;
+                     frame.size = mockCell.frame.size;
+                     mockCell.frame = frame;
+                     mockCell.transform = CGAffineTransformIdentity;
+                 }
+                 completion:^(BOOL finished) {
+                     [mockCell removeFromSuperview];
+                     mockCell = nil;
+                     [self.deleteView removeFromSuperview];
+                     self.layoutHelper.hideIndexPath = nil;
+                     [self.collectionView.collectionViewLayout invalidateLayout];
+                 }];
+            }
             
             // Reset
             [self invalidatesScrollTimer];
@@ -364,11 +425,19 @@ typedef NS_ENUM(NSInteger, _ScrollingDirection) {
 		if (_hasShouldAlterTranslationDelegateMethod) {
 			[(id<UICollectionViewDataSource_Draggable>)self.collectionView.dataSource collectionView:self.collectionView alterTranslation:&fingerTranslation];
 		}
+
+        UICollectionViewLayout<UICollectionViewLayout_Warpable> *layout = (UICollectionViewLayout<UICollectionViewLayout_Warpable> *)self.collectionView.collectionViewLayout;
+        if ([layout respondsToSelector:@selector(dragDirection)]) {
+            UICollectionViewScrollDirection direction = [layout dragDirection];
+            if (direction == UICollectionViewScrollDirectionHorizontal) fingerTranslation.y = 0;
+            else if (direction == UICollectionViewScrollDirectionVertical) fingerTranslation.x = 0;
+        }
+        
         mockCell.center = _CGPointAdd(mockCenter, fingerTranslation);
         
         // Scroll when necessary
         if (canScroll) {
-            UICollectionViewFlowLayout *scrollLayout = (UICollectionViewFlowLayout*)self.collectionView.collectionViewLayout;
+            UICollectionViewLayout<UICollectionViewLayout_Warpable> *scrollLayout = (UICollectionViewLayout<UICollectionViewLayout_Warpable>*)self.collectionView.collectionViewLayout;
             if([scrollLayout scrollDirection] == UICollectionViewScrollDirectionVertical) {
                 if (mockCell.center.y < (CGRectGetMinY(self.collectionView.bounds) + self.scrollingEdgeInsets.top)) {
                     [self setupScrollTimerInDirection:_ScrollingDirectionUp];
@@ -404,6 +473,12 @@ typedef NS_ENUM(NSInteger, _ScrollingDirection) {
         CGPoint point = [sender locationInView:self.collectionView];
         NSIndexPath *indexPath = [self indexPathForItemClosestToPoint:point];
         [self warpToIndexPath:indexPath];
+        
+        // Delete view hit test
+        if ([self deleteView])
+        {
+            [self.deleteView setHighlighted:CGRectContainsPoint(self.deleteView.frame, point)];
+        }
     }
 }
 
