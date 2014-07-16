@@ -13,5 +13,5 @@
 @property (nonatomic, assign) UIEdgeInsets scrollingEdgeInsets;
 @property (nonatomic, assign) CGFloat scrollingSpeed;
 @property (nonatomic, readonly) NSIndexPath *indexPathForMovingItem;
-@property (nonatomic, strong) UIImageView *deleteView;
+@property (nonatomic, strong) UIImageView *dropOnToDeleteView;
 @end

@@ -40,7 +40,7 @@ typedef NS_ENUM(NSInteger, _ScrollingDirection) {
     BOOL canWarp;
     BOOL canScroll;
 	BOOL _hasShouldAlterTranslationDelegateMethod;
-    CGPoint _deleteViewCenter;
+    CGPoint _dropOnToDeleteViewCenter;
 }
 @property (readonly, nonatomic) LSCollectionViewLayoutHelper *layoutHelper;
 @end
@@ -102,9 +102,9 @@ typedef NS_ENUM(NSInteger, _ScrollingDirection) {
 - (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary *)change context:(void *)context
 {
 	if (context == &kObservingCollectionViewOffset) {
-		if ([self.deleteView superview]) {
+		if ([self.dropOnToDeleteView superview]) {
             CGRect bounds = self.collectionView.bounds;
-			self.deleteView.center = CGPointMake(CGRectGetMinX(bounds) + _deleteViewCenter.x, CGRectGetMinY(bounds) + _deleteViewCenter.y);
+			self.dropOnToDeleteView.center = CGPointMake(CGRectGetMinX(bounds) + _dropOnToDeleteViewCenter.x, CGRectGetMinY(bounds) + _dropOnToDeleteViewCenter.y);
 		}
 	}
     else if (context == &kObservingCollectionViewLayoutContext) {
@@ -113,6 +113,12 @@ typedef NS_ENUM(NSInteger, _ScrollingDirection) {
     else {
         [super observeValueForKeyPath:keyPath ofObject:object change:change context:context];
     }
+}
+
+- (void)setDropOnToDeleteView:(UIImageView *)dropOnToDeleteView
+{
+	_dropOnToDeleteView = dropOnToDeleteView;
+	_dropOnToDeleteViewCenter = dropOnToDeleteView.center;
 }
 
 - (void)setEnabled:(BOOL)enabled
@@ -286,21 +292,19 @@ typedef NS_ENUM(NSInteger, _ScrollingDirection) {
             
             mockCenter = mockCell.center;
             [self.collectionView addSubview:mockCell];
-			if (self.deleteView) {
-                if ([self.collectionView.dataSource respondsToSelector:@selector(collectionView:deleteViewCenterForItemAtIndexPath:)]) {
-                    _deleteViewCenter = [(id<UICollectionViewDataSource_Draggable>)self.collectionView.dataSource
-                                      collectionView:self.collectionView deleteViewCenterForItemAtIndexPath:indexPath];
+			if (self.dropOnToDeleteView) {
+				BOOL canDelete = NO;
+                if ([self.collectionView.dataSource respondsToSelector:@selector(collectionView:canDeleteItemAtIndexPath:)]) {
+                    canDelete = [(id<UICollectionViewDataSource_Draggable>)self.collectionView.dataSource
+                                      collectionView:self.collectionView canDeleteItemAtIndexPath:indexPath];
                 }
-                else if (_deleteViewCenter.x == 0 && _deleteViewCenter.y == 0) {
-                    _deleteViewCenter = self.deleteView.center;
-                }
-                CGRect bounds = self.collectionView.bounds;
-                self.deleteView.center = CGPointMake(CGRectGetMinX(bounds) + _deleteViewCenter.x, CGRectGetMinY(bounds) + _deleteViewCenter.y);
-                if ([self.deleteView respondsToSelector:@selector(setHighlighted:)])
-                {
-                    [self.deleteView setHighlighted:NO];
-                }
-                [self.collectionView addSubview:self.deleteView];
+				if (canDelete)
+				{
+					CGRect bounds = self.collectionView.bounds;
+					self.dropOnToDeleteView.center = CGPointMake(CGRectGetMinX(bounds) + _dropOnToDeleteViewCenter.x, CGRectGetMinY(bounds) + _dropOnToDeleteViewCenter.y);
+					[self.dropOnToDeleteView setHighlighted:NO];
+					[self.collectionView addSubview:self.dropOnToDeleteView];
+				}
             }
 			
 			if ([self.collectionView.dataSource respondsToSelector:@selector(collectionView:transformForDraggingItemAtIndexPath:duration:)]) {
@@ -328,7 +332,9 @@ typedef NS_ENUM(NSInteger, _ScrollingDirection) {
             NSIndexPath *toIndexPath = self.layoutHelper.toIndexPath;
             id<UICollectionViewDataSource_Draggable> dataSource = (id<UICollectionViewDataSource_Draggable>)self.collectionView.dataSource;
 
-            if ([self.deleteView isHighlighted]) {
+			BOOL toDelete = sender.state == UIGestureRecognizerStateEnded && [self.dropOnToDeleteView isHighlighted];
+			
+            if (toDelete) {
                 // Delete the item
                 [self.collectionView performBatchUpdates:^{
                     [dataSource collectionView:self.collectionView deleteItemAtIndexPath:fromIndexPath];
@@ -344,15 +350,15 @@ typedef NS_ENUM(NSInteger, _ScrollingDirection) {
                 [UIView
                  animateWithDuration:0.3
                  animations:^{
-                     mockCell.center = self.deleteView.center;
+                     mockCell.center = self.dropOnToDeleteView.center;
                      mockCell.transform = CGAffineTransformScale(CGAffineTransformMakeRotation(10), 0.01, 0.01);
-                     self.deleteView.alpha = 0.0;
+                     self.dropOnToDeleteView.alpha = 0.0;
                  }
                  completion:^(BOOL finished) {
                      [mockCell removeFromSuperview];
                      mockCell = nil;
-                     [self.deleteView removeFromSuperview];
-                     self.deleteView.alpha = 1.0;
+                     [self.dropOnToDeleteView removeFromSuperview];
+                     self.dropOnToDeleteView.alpha = 1.0;
                      self.layoutHelper.hideIndexPath = nil;
                      [self.collectionView.collectionViewLayout invalidateLayout];
                  }];
@@ -383,7 +389,7 @@ typedef NS_ENUM(NSInteger, _ScrollingDirection) {
                  completion:^(BOOL finished) {
                      [mockCell removeFromSuperview];
                      mockCell = nil;
-                     [self.deleteView removeFromSuperview];
+                     [self.dropOnToDeleteView removeFromSuperview];
                      self.layoutHelper.hideIndexPath = nil;
                      [self.collectionView.collectionViewLayout invalidateLayout];
                  }];
@@ -475,9 +481,9 @@ typedef NS_ENUM(NSInteger, _ScrollingDirection) {
         [self warpToIndexPath:indexPath];
         
         // Delete view hit test
-        if ([self deleteView])
+        if ([self dropOnToDeleteView] && [self.dropOnToDeleteView superview])
         {
-            [self.deleteView setHighlighted:CGRectContainsPoint(self.deleteView.frame, point)];
+            [self.dropOnToDeleteView setHighlighted:CGRectContainsPoint(self.dropOnToDeleteView.frame, point)];
         }
     }
 }

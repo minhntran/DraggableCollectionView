@@ -55,14 +55,14 @@
     return [self getHelper].indexPathForMovingItem;
 }
 
-- (UIImageView *)deleteView
+- (UIImageView *)dropOnToDeleteView
 {
-	return [self getHelper].deleteView;
+	return [self getHelper].dropOnToDeleteView;
 }
 
-- (void)setDeleteView:(UIImageView *)deleteView
+- (void)setDropOnToDeleteView:(UIImageView *)dropOnToDeleteView
 {
-	[[self getHelper] setDeleteView:deleteView];
+	[[self getHelper] setDropOnToDeleteView:dropOnToDeleteView];
 }
 
 @end

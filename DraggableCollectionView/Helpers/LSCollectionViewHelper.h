@@ -17,5 +17,5 @@
 @property (nonatomic, assign) CGFloat scrollingSpeed;
 @property (nonatomic, assign) BOOL enabled;
 @property (nonatomic, readonly) NSIndexPath *indexPathForMovingItem;
-@property (nonatomic, strong) UIImageView *deleteView;
+@property (nonatomic, strong) UIImageView *dropOnToDeleteView;
 @end
