@@ -54,4 +54,14 @@
     [data insertObject:index atIndex:toIndexPath.item];
 }
 
+- (BOOL)collectionView:(LSCollectionViewHelper *)collectionView canDeleteItemAtIndexPath:(NSIndexPath *)indexPath
+{
+    return NO;
+}
+
+- (void)collectionView:(UICollectionView *)collectionView deleteItemAtIndexPath:(NSIndexPath *)indexPath
+{
+	
+}
+
 @end

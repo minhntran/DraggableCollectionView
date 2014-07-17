@@ -6,6 +6,7 @@
 
 #import "DraggableCollectionViewFlowLayout.h"
 #import "LSCollectionViewLayoutHelper.h"
+#import "UICollectionView+Draggable.h"
 
 @interface DraggableCollectionViewFlowLayout ()
 {
@@ -14,6 +15,11 @@
 @end
 
 @implementation DraggableCollectionViewFlowLayout
+
+- (void)dealloc
+{
+	[self.collectionView draggableCleanup];
+}
 
 - (LSCollectionViewLayoutHelper *)layoutHelper
 {
