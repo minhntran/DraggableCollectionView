@@ -57,6 +57,11 @@
     return YES;
 }
 
+- (BOOL)collectionView:(LSCollectionViewHelper *)collectionView canDeleteItemAtIndexPath:(NSIndexPath *)indexPath
+{
+    return YES;
+}
+
 - (BOOL)collectionView:(UICollectionView *)collectionView canMoveItemAtIndexPath:(NSIndexPath *)indexPath toIndexPath:(NSIndexPath *)toIndexPath
 {
 // Prevent item from being moved to index 0
@@ -74,6 +79,12 @@
     
     [data1 removeObjectAtIndex:fromIndexPath.item];
     [data2 insertObject:index atIndex:toIndexPath.item];
+}
+
+- (void)collectionView:(LSCollectionViewHelper *)collectionView deleteItemAtIndexPath:(NSIndexPath *)indexPath
+{
+    NSMutableArray *data = [sections objectAtIndex:indexPath.section];
+	[data removeObjectAtIndex:indexPath.item];
 }
 
 @end

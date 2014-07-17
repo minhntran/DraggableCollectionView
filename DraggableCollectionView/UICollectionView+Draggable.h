@@ -14,4 +14,7 @@
 @property (nonatomic, assign) CGFloat scrollingSpeed;
 @property (nonatomic, readonly) NSIndexPath *indexPathForMovingItem;
 @property (nonatomic, strong) UIImageView *dropOnToDeleteView;
+
+- (void)draggableCleanup;
+
 @end

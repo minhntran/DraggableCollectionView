@@ -8,14 +8,25 @@
 #import "LSCollectionViewHelper.h"
 #import <objc/runtime.h>
 
+static const char * LSCollectionViewHelperObjectKey = "LSCollectionViewHelper";
+
 @implementation UICollectionView (Draggable)
+
+- (void)draggableCleanup
+{
+    LSCollectionViewHelper *helper = objc_getAssociatedObject(self, LSCollectionViewHelperObjectKey);
+    if(helper != nil) {
+		[helper unbindFromCollectionView:self];
+		objc_setAssociatedObject(self, LSCollectionViewHelperObjectKey, nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+	}
+}
 
 - (LSCollectionViewHelper *)getHelper
 {
-    LSCollectionViewHelper *helper = objc_getAssociatedObject(self, "LSCollectionViewHelper");
+    LSCollectionViewHelper *helper = objc_getAssociatedObject(self, LSCollectionViewHelperObjectKey);
     if(helper == nil) {
         helper = [[LSCollectionViewHelper alloc] initWithCollectionView:self];
-        objc_setAssociatedObject(self, "LSCollectionViewHelper", helper, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+        objc_setAssociatedObject(self, LSCollectionViewHelperObjectKey, helper, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     }
     return helper;
 }
