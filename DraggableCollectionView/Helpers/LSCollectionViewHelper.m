@@ -279,7 +279,7 @@ typedef NS_ENUM(NSInteger, _ScrollingDirection) {
             cell.highlighted = NO;
             [mockCell removeFromSuperview];
             mockCell = [[UIImageView alloc] initWithFrame:cell.frame];
-			
+			mockCell.alpha = 0.8;
 			if ([self.collectionView.dataSource respondsToSelector:@selector(collectionView:imageForDraggingItemAtIndexPath:)]) {
 				mockCell.image = [(id<UICollectionViewDataSource_Draggable>)self.collectionView.dataSource
 								  collectionView:self.collectionView imageForDraggingItemAtIndexPath:indexPath];
