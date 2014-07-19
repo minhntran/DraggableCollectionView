@@ -261,7 +261,8 @@ typedef NS_ENUM(NSInteger, _ScrollingDirection) {
     
 	_hasShouldAlterTranslationDelegateMethod = [self.collectionView.dataSource respondsToSelector:@selector(collectionView:alterTranslation:)];
 	
-    NSIndexPath *indexPath = [self indexPathForItemClosestToPoint:[sender locationInView:self.collectionView]];
+	CGPoint point = [sender locationInView:self.collectionView];
+    NSIndexPath *indexPath = [self indexPathForItemClosestToPoint:point];
     
     switch (sender.state) {
         case UIGestureRecognizerStateBegan: {
@@ -310,6 +311,7 @@ typedef NS_ENUM(NSInteger, _ScrollingDirection) {
 					self.dropOnToDeleteView.center = CGPointMake(CGRectGetMinX(bounds) + _dropOnToDeleteViewCenter.x, CGRectGetMinY(bounds) + _dropOnToDeleteViewCenter.y);
 					[self.dropOnToDeleteView setHighlighted:NO];
 					[self.collectionView addSubview:self.dropOnToDeleteView];
+					self.dropOnToDeleteView.alpha = 0.2;
 				}
             }
 			
@@ -486,11 +488,22 @@ typedef NS_ENUM(NSInteger, _ScrollingDirection) {
         NSIndexPath *indexPath = [self indexPathForItemClosestToPoint:point];
         [self warpToIndexPath:indexPath];
         
-        // Delete view hit test
-        if ([self dropOnToDeleteView] && [self.dropOnToDeleteView superview])
-        {
-            [self.dropOnToDeleteView setHighlighted:CGRectContainsPoint(self.dropOnToDeleteView.frame, point)];
-        }
+		// Delete view hit test
+		if ([self dropOnToDeleteView] && [self.dropOnToDeleteView superview])
+		{
+			BOOL highlighted = CGRectContainsPoint(self.dropOnToDeleteView.frame, point);
+			[self.dropOnToDeleteView setHighlighted:highlighted];
+			if (!highlighted)
+			{
+				CGPoint center = self.dropOnToDeleteView.center;
+				CGFloat distance = (center.x - point.x) * (center.x - point.x) + (center.y - point.y) * (center.y - point.y);
+				self.dropOnToDeleteView.alpha = (2 - atan(distance / 10000.0)) / 2;
+			}
+			else
+			{
+				self.dropOnToDeleteView.alpha = 1.0;
+			}
+		}
     }
 }
 
