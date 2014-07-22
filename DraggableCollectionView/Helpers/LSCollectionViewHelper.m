@@ -74,13 +74,14 @@ typedef NS_ENUM(NSInteger, _ScrollingDirection) {
         _panPressGestureRecognizer.delegate = self;
 
         [_collectionView addGestureRecognizer:_panPressGestureRecognizer];
-        
-        for (UIGestureRecognizer *gestureRecognizer in _collectionView.gestureRecognizers) {
-            if ([gestureRecognizer isKindOfClass:[UILongPressGestureRecognizer class]]) {
-                [gestureRecognizer requireGestureRecognizerToFail:_longPressGestureRecognizer];
-                break;
-            }
-        }
+
+//        This causes crashes, ios bug?
+//        for (UIGestureRecognizer *gestureRecognizer in _collectionView.gestureRecognizers) {
+//            if ([gestureRecognizer isKindOfClass:[UILongPressGestureRecognizer class]]) {
+//                [gestureRecognizer requireGestureRecognizerToFail:_longPressGestureRecognizer];
+//                break;
+//            }
+//        }
         
         [self layoutChanged];
     }
