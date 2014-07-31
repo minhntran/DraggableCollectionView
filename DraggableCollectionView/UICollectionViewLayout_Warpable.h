@@ -19,3 +19,4 @@
 - (UICollectionViewScrollDirection)dragDirection;
 
 @end
+
